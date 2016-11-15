@@ -139,8 +139,9 @@ elif input_var == 2:
         newShapeFile.field('Id', 'N', 6, 0)
 
         for j in range(len(featureID)):
-            newShapeFile.poly(shapeType=5, parts=[coordinates[j]])
-            newShapeFile.record(j)
+            if featureGroup[j] == groupID[k]:
+                newShapeFile.poly(shapeType=5, parts=[coordinates[j]])
+                newShapeFile.record(j)
 
         newShapeFile.save(groupName[k])
 

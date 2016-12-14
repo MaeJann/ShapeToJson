@@ -10,6 +10,7 @@ import shapefile
 import numpy as np
 import random
 import json
+import uuid
 
 input_var = int(
     input("For converting a shapefile to json, press 1! If you want to convert json to shapefiles instead, press 2"))
@@ -24,7 +25,7 @@ if input_var == 1:
 
     # ---------  Readig Shapefile containg feature geometry -----------------------------------------------------------
 
-    filename = "coarse grained calcite.shp"  # in final version change to input command to get filname
+    filename = "duplex structure.shp"  # in final version change to input command to get filname
 
     SF = shapefile.Reader(filename)
     shapes = SF.shapes()
@@ -57,26 +58,29 @@ if input_var == 1:
         if coordinates[i][0] == coordinates[i][-1]:
             isClosed[i] = True
         else:
-            isClosed[i] = False
+            coordinates[i].append(coordinates[i][0])
+            isClosed[i] = True
 
     isClosed = np.array(isClosed, dtype=bool)
     isClosed = isClosed.tolist()  # converting to list so it can be serialized by jason
-
-    ID_index = range(len(shapes))  # s feature ID as combination of filename feature index & random numbers
+    
+    # setting feature ID as unique uuid
+    
     featureID = []
-
     for i in range(len(shapes)):
-        ID = str(ID_index[i]) + "_" + str(int(random.uniform(1000, 9999))) + filename[0:4] + str(
-            int(random.uniform(1000, 9999)))
-        featureID.append(ID)
+        featureID.append(str(uuid.uuid4()))
+
+    # setting angle as default to 1
+
+    angle = 1.
 
     # --------- Setting Groupinformation -- Discuss with Simon --------------------------------------------------------
 
-    groupID = str(filename) + str(int(random.uniform(1000, 9999)))  # Discuss with Simon
-    groupName = filename  # Discuss with Simon
-    strokePaint = -3407872  # default value, shape files dont have visual information #Discuss with Simon
-    fillPaint = 0  # default value, shape files dont have visual information #Discuss with Simon
-    strokeWidth = 1  # default value, shape files dont have visual information #Discuss with Simon
+    groupID = str(uuid.uuid4()) 
+    groupName = filename[0:-4] 
+    strokePaint = -3407872  
+    fillPaint = 0  
+    strokeWidth = 1 
 
     # --------- Writing the Json file ---------------------------------------------------------------------------------
 
@@ -84,15 +88,15 @@ if input_var == 1:
 
     for i in range(len(shapes)):
         all_features.append({"properties": {"uid": featureID[i], "scale": "not implemented yet",
-                                            "description": "not implemented yet", "name": "not implemented yet",
-                                            "group": groupID, "isClosed": isClosed[i], "angle": "not implemented yet"},
+                                            "description": "", "name": "",
+                                            "group": groupID, "isClosed": isClosed[i], "angle": angle},
                              "type": "Feature",
                              "geometry": {"type": "Multipoint", "coordinates": coordinates[i]}})
 
     group_information = [{"uid": groupID, "name": groupName, "strokePaint": strokePaint, "fillPaint": fillPaint,
                           "strokeWidth": strokeWidth}]
 
-    print(i)
+    
     root = {"features": all_features, "type": "FeatureCollection", "groups": group_information}
     # print(json.dumps(root, sort_keys=False, indent = 4))
 

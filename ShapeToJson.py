@@ -5,7 +5,7 @@
 # Last changes: 29.19.2016
 # ---------------------------------------------------------------------------------------------------------------------
 
-2
+
 import shapefile
 import numpy as np
 import random
@@ -31,7 +31,7 @@ if input_var == 1:
     shapes = SF.shapes()
 
     fields = SF.fields
-    print(fields)
+  
 
     # ---------  Generating feature data ------------------------------------------------------------------------------
 

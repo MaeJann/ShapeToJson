@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------------------------------------------------------
-# Working titel: ShapeyVsJason
+# Working titel: ShapeToJason
 # Author: Jannik Märsch
-# Version: 0.2
-# Last changes: 29.19.2016
+# Version: 0.3
+# Last changes: 09.01.2017
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -11,6 +11,7 @@ import numpy as np
 import random
 import json
 import uuid
+import copy
 
 input_var = int(
     input("For converting a shapefile to json, press 1! If you want to convert json to shapefiles instead, press 2"))
@@ -25,7 +26,7 @@ if input_var == 1:
 
     # ---------  Readig Shapefile containg feature geometry -----------------------------------------------------------
 
-    filename = "duplex structure.shp"  # in final version change to input command to get filname
+    filename = "Calibration polygon.shp"  # in final version change to input command to get filname
 
     SF = shapefile.Reader(filename)
     shapes = SF.shapes()
@@ -54,13 +55,23 @@ if input_var == 1:
 
     isClosed = np.empty(len(shapes))
 
-    for i in range(len(coordinates)):  # checking if features are closed
+    print(coordinates)
+    
+    for i in range(len(coordinates)):  # converting coordinates to match tileviewer coordinate system and checking if features are closed
+        
         if coordinates[i][0] == coordinates[i][-1]:
             isClosed[i] = True
         else:
             coordinates[i].append(coordinates[i][0])
             isClosed[i] = True
 
+        for j in range(len(coordinates[i])):
+            coordinates[i][j][0] = 4.00017073e+00 * coordinates[i][j][0] + 5.20006199e+04
+            coordinates[i][j][1] = -4.00121315 * coordinates[i][j][1] - 82.60063378
+
+    print(coordinates)
+
+    
     isClosed = np.array(isClosed, dtype=bool)
     isClosed = isClosed.tolist()  # converting to list so it can be serialized by jason
     
@@ -72,7 +83,7 @@ if input_var == 1:
 
     # setting angle as default to 1
 
-    angle = 1.
+    angle = 27.095552493781793
 
     # --------- Setting Groupinformation -- Discuss with Simon --------------------------------------------------------
 
@@ -87,7 +98,7 @@ if input_var == 1:
     all_features = []
 
     for i in range(len(shapes)):
-        all_features.append({"properties": {"uid": featureID[i], "scale": "not implemented yet",
+        all_features.append({"properties": {"uid": featureID[i], "scale": 0.069442284018722882,
                                             "description": "", "name": "",
                                             "group": groupID, "isClosed": isClosed[i], "angle": angle},
                              "type": "Feature",
@@ -112,9 +123,9 @@ if input_var == 1:
 
 
 elif input_var == 2:
-    print("json to shapefile is not implemented yet")
 
-    with open('annotations.json') as data_file:
+
+    with open('calibration_json.json') as data_file:
         data = json.load(data_file)
 
     features = data["features"]
@@ -122,7 +133,10 @@ elif input_var == 2:
 
     featureID = []
     isClosed = []
+    
     coordinates = []
+    coordinates_corr = []
+    
     featureGroup = []
 
     groupID = []
@@ -131,9 +145,18 @@ elif input_var == 2:
     for i in range(len(features)):
         featureID.append(features[i]["properties"]["uid"])
         featureGroup.append(features[i]["properties"]["group"])
-        isClosed.append(features[i]["properties"]["isClosed"])
+        isClosed.append(features[i]["properties"]["isClosed"]) 
         coordinates.append(features[i]["geometry"]["coordinates"])
+        
+    coordinates_corr = copy.deepcopy(coordinates) # converting coordinates to match ArcGis tileviewer coordinate system
+    for i in range(len(features)):
+        for j in range(len(coordinates[i])):                                                               
+            coordinates_corr[i][j][0] = (coordinates[i][j][0] -  5.20006199e+04) / 4.00017073e+00
+            coordinates_corr[i][j][1] = (coordinates[i][j][1] + 82.60063378)     /-4.00121315
 
+    print(coordinates[-1])
+    print(coordinates_corr[-1])
+    
     for k in range(len(groups)):
         groupID.append(groups[k]["uid"])
         groupName.append(groups[k]["name"])
@@ -144,7 +167,7 @@ elif input_var == 2:
 
         for j in range(len(featureID)):
             if featureGroup[j] == groupID[k]:
-                newShapeFile.poly(shapeType=5, parts=[coordinates[j]])
+                newShapeFile.poly(shapeType=5, parts=[coordinates_corr[j]])
                 newShapeFile.record(j)
 
         newShapeFile.save(groupName[k])

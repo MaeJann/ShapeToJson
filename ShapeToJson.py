@@ -1,8 +1,8 @@
 # ---------------------------------------------------------------------------------------------------------------------
 # Working titel: ShapeToJason
 # Author: Jannik Märsch
-# Version: 0.3
-# Last changes: 09.01.2017
+# Version: 0.4
+# Last changes: 01.02.2017
 # ---------------------------------------------------------------------------------------------------------------------
 
 
@@ -14,7 +14,7 @@ import uuid
 import copy
 
 input_var = int(
-    input("For converting a shapefile to json, press 1! If you want to convert json to shapefiles instead, press 2"))
+    input("For converting a shapefile to json, press 1! If you want to convert json to shapefiles instead, press 2. Confirm with enter."))
 print()
 print()
 
@@ -24,9 +24,9 @@ print()
 
 if input_var == 1:
 
-    # ---------  Readig Shapefile containg feature geometry -----------------------------------------------------------
+    # --- Read shapefile containg feature geometry:
 
-    filename = "Calibration polygon.shp"  # in final version change to input command to get filname
+    filename = input("Filename:")  # in final version change to input command to get filname
 
     SF = shapefile.Reader(filename)
     shapes = SF.shapes()
@@ -34,13 +34,13 @@ if input_var == 1:
     fields = SF.fields
   
 
-    # ---------  Generating feature data ------------------------------------------------------------------------------
+    # --- Generate feature data:
 
-    Feature_type = "Feature"  # Default: "Feature"
+    Feature_type = "Feature"
 
-    geometry_type = "Multipoint"  # Default: "Multipoint"
+    geometry_type = "Multipoint"  
 
-    coordinates = {}  # extracting coordinates; key = dictionairy index = feature index
+    coordinates = {}  # extract coordinates; key = dictionairy index = feature index
     k = 0
 
     while k < len(shapes):
@@ -49,15 +49,13 @@ if input_var == 1:
         coordinates[k] = value
         k += 1
 
-    for i in range(len(shapes)):  # converting to list so it can be serialized by jason
+    for i in range(len(shapes)):  # convert to list so it can be serialized by jason
         coordinates[i] = np.array(coordinates[i])
         coordinates[i] = coordinates[i].tolist()
 
     isClosed = np.empty(len(shapes))
-
-    print(coordinates)
     
-    for i in range(len(coordinates)):  # converting coordinates to match tileviewer coordinate system and checking if features are closed
+    for i in range(len(coordinates)):  # convert coordinates to match tileviewer coordinate system and checking if features are closed
         
         if coordinates[i][0] == coordinates[i][-1]:
             isClosed[i] = True
@@ -69,23 +67,20 @@ if input_var == 1:
             coordinates[i][j][0] = 4.00017073e+00 * coordinates[i][j][0] + 5.20006199e+04
             coordinates[i][j][1] = -4.00121315 * coordinates[i][j][1] - 82.60063378
 
-    print(coordinates)
-
-    
     isClosed = np.array(isClosed, dtype=bool)
-    isClosed = isClosed.tolist()  # converting to list so it can be serialized by jason
+    isClosed = isClosed.tolist() # convert to list so it can be serialized by jason
     
-    # setting feature ID as unique uuid
+    # --- Set feature ID to unique uuid:
     
     featureID = []
     for i in range(len(shapes)):
         featureID.append(str(uuid.uuid4()))
 
-    # setting angle as default to 1
+    # --- Set angle to default 
 
     angle = 27.095552493781793
 
-    # --------- Setting Groupinformation -- Discuss with Simon --------------------------------------------------------
+    # --- Set some default groupinformation: 
 
     groupID = str(uuid.uuid4()) 
     groupName = filename[0:-4] 
@@ -93,7 +88,7 @@ if input_var == 1:
     fillPaint = 0  
     strokeWidth = 1 
 
-    # --------- Writing the Json file ---------------------------------------------------------------------------------
+    # --- Write Json file:
 
     all_features = []
 
@@ -109,13 +104,14 @@ if input_var == 1:
 
     
     root = {"features": all_features, "type": "FeatureCollection", "groups": group_information}
-    # print(json.dumps(root, sort_keys=False, indent = 4))
 
     finalFile = json.dumps(root)
-    file = open("test.json", "w")
+    file = open("ConvertedShapefile.json", "w")
     file.write(finalFile)
     file.close()
+
     print("FINISHED")
+    input("To close this window, press ENTER!")
 
 # ---------------------------------------------------------------------------------------------------------------------
 # ----JSON TO SHAPEFILE------------------------------------------------------------------------------------------------
@@ -124,38 +120,45 @@ if input_var == 1:
 
 elif input_var == 2:
 
+    # --- Open Json file:
 
-    with open('calibration_json.json') as data_file:
+    filename = input("Filename:") 
+
+    with open(filename) as data_file:
         data = json.load(data_file)
 
+    # --- Extract feature and group data:
+    
     features = data["features"]
     groups = data["groups"]
 
+    # --- Define empty arrays to store individual data:
+    
     featureID = []
     isClosed = []
-    
     coordinates = []
     coordinates_corr = []
-    
     featureGroup = []
-
     groupID = []
     groupName = []
+
+    # --- Iterate through all features and extract data for each feature:
 
     for i in range(len(features)):
         featureID.append(features[i]["properties"]["uid"])
         featureGroup.append(features[i]["properties"]["group"])
         isClosed.append(features[i]["properties"]["isClosed"]) 
         coordinates.append(features[i]["geometry"]["coordinates"])
+
+    # --- Convert coordinates to match ArcGis coordinate system:
         
-    coordinates_corr = copy.deepcopy(coordinates) # converting coordinates to match ArcGis tileviewer coordinate system
+    coordinates_corr = copy.deepcopy(coordinates) 
     for i in range(len(features)):
         for j in range(len(coordinates[i])):                                                               
             coordinates_corr[i][j][0] = (coordinates[i][j][0] -  5.20006199e+04) / 4.00017073e+00
             coordinates_corr[i][j][1] = (coordinates[i][j][1] + 82.60063378)     /-4.00121315
 
-    print(coordinates[-1])
-    print(coordinates_corr[-1])
+    # --- Create a shape file to all groups and add all features with the corresponding groupID:
     
     for k in range(len(groups)):
         groupID.append(groups[k]["uid"])
@@ -171,5 +174,6 @@ elif input_var == 2:
                 newShapeFile.record(j)
 
         newShapeFile.save(groupName[k])
-
+        
     print("FINISHED")
+    input("To close this window, press ENTER!")
